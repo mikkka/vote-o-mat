@@ -1,41 +1,48 @@
 package name.mtkachev.voteomat.domain
 
+import java.time.LocalDateTime
 import java.util.Date
 
 sealed trait Command
+sealed trait CommonCommand extends Command
+sealed case class CommonCommandContext(userId: String, votingId: Option[Int])
+
+sealed trait CtxCommand extends Command
 
 case class CreateVoting(
                          name: String,
                          anon: Boolean,
                          viewAfterStop: Boolean,
-                         startDate: Option[Date],
-                         stopDate: Option[Date]
-                       ) extends Command
+                         startDate: Option[LocalDateTime],
+                         stopDate: Option[LocalDateTime]
+                       ) extends CommonCommand
 
-case class ListVotings() extends Command
-case class DeleteVoting(votingId: Int) extends Command
-case class StartVoting(votingId: Int) extends Command
-case class StopVoting(votingId: Int) extends Command
+case class ListVotings() extends CommonCommand
+case class DeleteVoting(votingId: Int) extends CommonCommand
+case class StartVoting(votingId: Int) extends CommonCommand
+case class StopVoting(votingId: Int) extends CommonCommand
 
-case class ViewVotingResult(votingId: Int) extends Command
+case class ViewVotingResult(votingId: Int) extends CommonCommand
 
-sealed trait AddQuestion
-case class AddOpenQuestion(question: String) extends Command with AddQuestion
+case class ViewVoting() extends CommonCommand
+
+sealed trait AddQuestion extends CommonCommand
+case class AddOpenQuestion(question: String) extends AddQuestion
 case class AddCloseQuestion(
                             question: String,
                             options: List[String]
-                          ) extends Command with AddQuestion
+                          ) extends AddQuestion
 case class AddMultiQuestion(
                              question: String,
                              options: List[String]
-                           ) extends Command with AddQuestion
+                           ) extends AddQuestion
 
 
-case class DeleteQuestion(questionId: Int) extends Command
+case class DeleteQuestion(questionId: Int) extends CommonCommand
 
 case class Vote(
                  questionId: Int,
-                 answer: String,
-                 answerDig: List[Int]) extends Command
+                 answer: String) extends CommonCommand
 
-sealed case class CommandContext(userId: String, votingId: Option[Int])
+case class Begin(votingId: Int) extends CtxCommand
+case class End() extends CtxCommand

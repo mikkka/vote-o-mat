@@ -3,7 +3,8 @@ val catsAll = Seq(
   "org.typelevel" %% "cats-core" % catsVersion,
   "org.typelevel" %% "cats-macros" % catsVersion,
   "org.typelevel" %% "cats-kernel" % catsVersion,
-  "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.0"
+  "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.0",
+  "org.scalatest" %% "scalatest" % "3.0.4" % "test"
 )
 
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.4")
