@@ -4,10 +4,18 @@ import cats.Monad
 
 import scala.language.higherKinds
 
-case class LensT[M[_], O, V](
-    get: O => M[V],
-    set: (O, V) => M[O]
-)
+trait LensGetT[M[_], O, V] {
+  def get: O => M[V]
+}
+
+trait LensSetT[M[_], O, V] {
+  def set: (O, V) => M[O]
+}
+
+case class LensT[M[_], O, V] (
+    override val get: O => M[V],
+    override val set: (O, V) => M[O]
+) extends LensGetT[M, O, V] with LensSetT[M, O, V]
 
 object LensT {
   import cats.syntax.flatMap._
@@ -27,6 +35,8 @@ object LensT {
       }
     )
 
+
+
   def lens[M[_], O, V](_get: O => V, _set: (O, V) => O)(implicit ev: Monad[M]) = LensT(
     get = _get andThen ev.pure,
     set = (o: O, v: V) => ev.pure(_set(o, v))
@@ -35,6 +45,11 @@ object LensT {
   def lens0[M[_], O, V](_get: O => V, _set: (O, V) => M[O])(implicit ev: Monad[M]) = LensT(
     get = _get andThen ev.pure,
     set = _set
+  )
+
+  def lens1[M[_], O, V](_get: O => M[V], _set: (O, V) => O)(implicit ev: Monad[M]) = LensT(
+    get = _get,
+    set = (o: O, v: V) => ev.pure(_set(o, v))
   )
 
   def lensT[M[_], O, V](_get: O => M[V], _set: (O, V) => M[O])(implicit ev: Monad[M]) = LensT(
