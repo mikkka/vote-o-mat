@@ -4,18 +4,10 @@ import cats.Monad
 
 import scala.language.higherKinds
 
-trait LensGetT[M[_], O, V] {
-  def get: O => M[V]
-}
-
-trait LensSetT[M[_], O, V] {
-  def set: (O, V) => M[O]
-}
-
 case class LensT[M[_], O, V] (
-    override val get: O => M[V],
-    override val set: (O, V) => M[O]
-) extends LensGetT[M, O, V] with LensSetT[M, O, V]
+    get: O => M[V],
+    set: (O, V) => M[O]
+)
 
 object LensT {
   import cats.syntax.flatMap._
@@ -34,7 +26,6 @@ object LensT {
         }
       }
     )
-
 
 
   def lens[M[_], O, V](_get: O => V, _set: (O, V) => O)(implicit ev: Monad[M]) = LensT(
