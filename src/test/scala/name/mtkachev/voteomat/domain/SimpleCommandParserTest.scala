@@ -36,48 +36,46 @@ class SimpleCommandParserTest extends FlatSpec with SimpleCommandParser {
 
   it should "parse cmdCreateVoting" in {
     parse("/create_vote (кто здесь) (no) (continuous) (10:10:02 19:02:20) (14:01:21 20:02:20)") should
-      be(Right(
-        CreateVoting("кто здесь", false, false,
+      be(CreateVoting("кто здесь", false, false,
           Some(LocalDateTime.of(2019, 2, 20, 10, 10, 2)),
-          Some(LocalDateTime.of(2020, 2, 20, 14, 1, 21)))))
+          Some(LocalDateTime.of(2020, 2, 20, 14, 1, 21))).asRight)
 
     parse("/create_vote (кто здесь?) (no) (continuous) (10:10:02 19:02:20)") should
-      be(Right(
-        CreateVoting("кто здесь?", false, false,
-          Some(LocalDateTime.of(2019, 2, 20, 10, 10, 2)), None)))
+      be(CreateVoting("кто здесь?", false, false,
+          Some(LocalDateTime.of(2019, 2, 20, 10, 10, 2)), None).asRight)
 
     parse("/create_vote (кто здесь!) (no) (continuous)") should
-      be(Right(CreateVoting("кто здесь!", false, false, None, None)))
+      be(CreateVoting("кто здесь!", false, false, None, None).asRight)
 
     parse("/create_vote (кто здесь#) (no)") should
-      be(Right(CreateVoting("кто здесь#", false, true, None, None)))
+      be(CreateVoting("кто здесь#", false, true, None, None).asRight)
 
     parse("/create_vote (кто здесь - 012)") should
-      be(Right(CreateVoting("кто здесь - 012", true, true, None, None)))
+      be(CreateVoting("кто здесь - 012", true, true, None, None).asRight)
   }
 
   it should "parse cmdListVotings" in {
-    parse("/list") should be(Right(ListVotings()))
+    parse("/list") should be(ListVotings().asRight)
   }
 
   it should "parse cmdDeleteVoting" in {
-    parse("/delete_vote (123)") should be(Right(DeleteVoting(123)))
+    parse("/delete_vote (123)") should be(DeleteVoting(123).asRight)
   }
 
   it should "parse cmdStartVoting" in {
-    parse("/start_vote (12323)") should be(Right(StartVoting(12323)))
+    parse("/start_vote (12323)") should be(StartVoting(12323).asRight)
   }
 
   it should "parse cmdStopVoting" in {
-    parse("/stop_vote (4564)") should be(Right(StopVoting(4564)))
+    parse("/stop_vote (4564)") should be(StopVoting(4564).asRight)
   }
 
   it should "parse cmdViewVotingResult" in {
-    parse("/result (99234)") should be(Right(ViewVotingResult(99234)))
+    parse("/result (99234)") should be(ViewVotingResult(99234).asRight)
   }
 
   it should "parse cmdViewVoting" in {
-    parse("/view") should be(Right(ViewVoting()))
+    parse("/view") should be(ViewVoting().asRight)
   }
 
   it should "parse cmdAddQuestion" in {
@@ -97,18 +95,19 @@ class SimpleCommandParserTest extends FlatSpec with SimpleCommandParser {
   }
 
   it should "parse cmdDeleteQuestion" in {
-    parse("/delete_question (349)") should be(Right(DeleteQuestion(349)))
+    parse("/delete_question (349)") should be(DeleteQuestion(349).asRight)
   }
 
   it should "parse cmdVote" in {
-    parse("/vote (09) (ответы ответы ответы ответы)") should be(Right(Vote(9, "ответы ответы ответы ответы")))
+    parse("/vote (09) (ответы ответы ответы ответы)") should be(
+      Vote(9, "ответы ответы ответы ответы").asRight)
   }
 
   it should "parse cmdBegin" in {
-    parse("/begin (22)") should be(Right(Begin(22)))
+    parse("/begin (22)") should be(Begin(22).asRight)
   }
 
   it should "parse cmdEnd" in {
-    parse("/end") should be(Right(End()))
+    parse("/end") should be(End().asRight)
   }
 }
