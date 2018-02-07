@@ -1,21 +1,8 @@
 package name.mtkachev.voteomat.util
 
-import cats.FlatMap
+import cats.Monad
 
-case class Lens[O, V](
-    get: O => V,
-    set: (O, V) => O
-)
-
-object Lens {
-  def compose[Outer, Inner, Value](
-      outer: Lens[Outer, Inner],
-      inner: Lens[Inner, Value]
-  ) = Lens[Outer, Value](
-    get = outer.get andThen inner.get,
-    set = (obj, value) => outer.set(obj, inner.set(outer.get(obj), value))
-  )
-}
+import scala.language.higherKinds
 
 case class LensT[M[_], O, V](
     get: O => M[V],
@@ -28,7 +15,7 @@ object LensT {
   def compose[M[_], Outer, Inner, Value](
       outer: LensT[M, Outer, Inner],
       inner: LensT[M, Inner, Value]
-  )(implicit ev: FlatMap[M]) =
+  )(implicit ev: Monad[M]) =
     LensT[M, Outer, Value](
       get = outer.get andThen (x => x.flatMap(inner.get)),
       set = (obj, value) => {
@@ -39,4 +26,19 @@ object LensT {
         }
       }
     )
+
+  def lens[M[_], O, V](_get: O => V, _set: (O, V) => O)(implicit ev: Monad[M]) = LensT(
+    get = _get andThen ev.pure,
+    set = (o: O, v: V) => ev.pure(_set(o, v))
+  )
+
+  def lens0[M[_], O, V](_get: O => V, _set: (O, V) => M[O])(implicit ev: Monad[M]) = LensT(
+    get = _get andThen ev.pure,
+    set = _set
+  )
+
+  def lensT[M[_], O, V](_get: O => M[V], _set: (O, V) => M[O])(implicit ev: Monad[M]) = LensT(
+    get = _get,
+    set = _set
+  )
 }
