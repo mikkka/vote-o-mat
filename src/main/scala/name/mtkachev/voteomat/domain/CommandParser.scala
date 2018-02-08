@@ -5,21 +5,31 @@ import java.time.format.DateTimeFormatter
 
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.CharSequenceReader
-
 import cats.syntax.either._
 
+import scala.util.Try
+
 trait CommandParser {
-  def parse(txt: String): Either[String, Command]
+  def parse(txt: String): Try[Command]
 }
 
 trait SimpleCommandParser extends CommandParser with RegexParsers {
   //eliminate white space skipping
   override val whiteSpace = "".r
 
-  override def parse(txt: String): Either[String, Command] = {
+  override def parse(txt: String): Try[Command] =Try {
     val parseResult = cmd.apply(new CharSequenceReader(txt))
-    if (parseResult.successful) parseResult.get.asRight
-    else "parse error".asLeft
+    if (parseResult.successful) parseResult.get
+    else throw new IllegalArgumentException("bad input: \n" + txt)
+  }
+
+  def parseOpenAnswer(txt: String): Try[String] = Try{ txt }
+  def parseCloseAnswer(txt: String): Try[Int] = Try{ txt.toInt }
+  def parseMultiAnswer(txt: String): Try[Set[Int]] = Try {
+    val lst = txt.split("\\s+").toList.map(_.toInt)
+    val set = lst.toSet
+    assert(set.size == lst.size)
+    set
   }
 
   def cmd: Parser[Command] =
@@ -131,7 +141,9 @@ trait SimpleCommandParser extends CommandParser with RegexParsers {
       spaces ~
       numArg ~
       spaces ~
-      stringArg ^^ { case _ ~ _ ~ qId ~ _ ~ ans => Vote(qId, ans) }
+      stringArg ^^ { case _ ~ _ ~ qId ~ _ ~ ans =>
+        Vote(qId, ans, parseOpenAnswer, parseCloseAnswer, parseMultiAnswer)
+      }
 
   def cmdBegin: Parser[Begin] =
     "/begin" ~

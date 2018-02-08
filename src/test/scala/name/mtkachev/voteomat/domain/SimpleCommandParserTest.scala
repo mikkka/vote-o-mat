@@ -6,7 +6,7 @@ import org.scalatest.FlatSpec
 import org.scalatest._
 import Matchers._
 
-import cats.syntax.either._
+import scala.util.Try
 import scala.util.parsing.input.CharSequenceReader
 
 class SimpleCommandParserTest extends FlatSpec with SimpleCommandParser {
@@ -36,78 +36,79 @@ class SimpleCommandParserTest extends FlatSpec with SimpleCommandParser {
 
   it should "parse cmdCreateVoting" in {
     parse("/create_vote (кто здесь) (no) (continuous) (10:10:02 19:02:20) (14:01:21 20:02:20)") should
-      be(CreateVoting("кто здесь", false, false,
+      be(Try(CreateVoting("кто здесь", false, false,
           Some(LocalDateTime.of(2019, 2, 20, 10, 10, 2)),
-          Some(LocalDateTime.of(2020, 2, 20, 14, 1, 21))).asRight)
+          Some(LocalDateTime.of(2020, 2, 20, 14, 1, 21)))))
 
     parse("/create_vote (кто здесь?) (no) (continuous) (10:10:02 19:02:20)") should
-      be(CreateVoting("кто здесь?", false, false,
-          Some(LocalDateTime.of(2019, 2, 20, 10, 10, 2)), None).asRight)
+      be(Try(CreateVoting("кто здесь?", false, false,
+          Some(LocalDateTime.of(2019, 2, 20, 10, 10, 2)), None)))
 
     parse("/create_vote (кто здесь!) (no) (continuous)") should
-      be(CreateVoting("кто здесь!", false, false, None, None).asRight)
+      be(Try(CreateVoting("кто здесь!", false, false, None, None)))
 
     parse("/create_vote (кто здесь#) (no)") should
-      be(CreateVoting("кто здесь#", false, true, None, None).asRight)
+      be(Try(CreateVoting("кто здесь#", false, true, None, None)))
 
     parse("/create_vote (кто здесь - 012)") should
-      be(CreateVoting("кто здесь - 012", true, true, None, None).asRight)
+      be(Try(CreateVoting("кто здесь - 012", true, true, None, None)))
   }
 
   it should "parse cmdListVotings" in {
-    parse("/list") should be(ListVotings().asRight)
+    parse("/list") should be(Try(ListVotings()))
   }
 
   it should "parse cmdDeleteVoting" in {
-    parse("/delete_vote (123)") should be(DeleteVoting(123).asRight)
+    parse("/delete_vote (123)") should be(Try(DeleteVoting(123)))
   }
 
   it should "parse cmdStartVoting" in {
-    parse("/start_vote (12323)") should be(StartVoting(12323).asRight)
+    parse("/start_vote (12323)") should be(Try(StartVoting(12323)))
   }
 
   it should "parse cmdStopVoting" in {
-    parse("/stop_vote (4564)") should be(StopVoting(4564).asRight)
+    parse("/stop_vote (4564)") should be(Try(StopVoting(4564)))
   }
 
   it should "parse cmdViewVotingResult" in {
-    parse("/result (99234)") should be(ViewVotingResult(99234).asRight)
+    parse("/result (99234)") should be(Try(ViewVotingResult(99234)))
   }
 
   it should "parse cmdViewVoting" in {
-    parse("/view") should be(ViewVoting().asRight)
+    parse("/view") should be(Try(ViewVoting()))
   }
 
   it should "parse cmdAddQuestion" in {
-    parse("/create_question (what is up?)") should be(AddOpenQuestion("what is up?").asRight)
-    parse("/create_question (what is up?) (open)") should be(AddOpenQuestion("what is up?").asRight)
+    parse("/create_question (what is up?)") should be(Try(AddOpenQuestion("what is up?")))
+    parse("/create_question (what is up?) (open)") should be(Try(AddOpenQuestion("what is up?")))
     parse(
       """/create_question (what is up?) (choice)
         |(asd asd asd1)
-        |(asd asd klaslkasklas2)""".stripMargin) should be(
-      AddCloseQuestion("what is up?", List("asd asd asd1", "asd asd klaslkasklas2")).asRight)
+        |(asd asd klaslkasklas2)""".stripMargin) should be(Try(
+      AddCloseQuestion("what is up?", List("asd asd asd1", "asd asd klaslkasklas2"))))
 
     parse(
       """/create_question (what is up?) (multi)
         |(asd asd asd1)
-        |(asd asd klaslkasklas2)""".stripMargin) should be(
-      AddMultiQuestion("what is up?", List("asd asd asd1", "asd asd klaslkasklas2")).asRight)
+        |(asd asd klaslkasklas2)""".stripMargin) should be(Try(
+      AddMultiQuestion("what is up?", List("asd asd asd1", "asd asd klaslkasklas2"))))
   }
 
   it should "parse cmdDeleteQuestion" in {
-    parse("/delete_question (349)") should be(DeleteQuestion(349).asRight)
+    parse("/delete_question (349)") should be(Try(DeleteQuestion(349)))
   }
 
   it should "parse cmdVote" in {
-    parse("/vote (09) (ответы ответы ответы ответы)") should be(
-      Vote(9, "ответы ответы ответы ответы").asRight)
+    val vote = parse("/vote (09) (ответы ответы ответы ответы)")
+
+    vote.collect{case x: Vote => (x.questionId, x.answer)} should be(Try((9, "ответы ответы ответы ответы")))
   }
 
   it should "parse cmdBegin" in {
-    parse("/begin (22)") should be(Begin(22).asRight)
+    parse("/begin (22)") should be(Try(Begin(22)))
   }
 
   it should "parse cmdEnd" in {
-    parse("/end") should be(End().asRight)
+    parse("/end") should be(Try(End()))
   }
 }

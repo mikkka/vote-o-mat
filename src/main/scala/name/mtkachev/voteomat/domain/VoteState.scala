@@ -35,14 +35,6 @@ sealed trait Question {
   def answers: Vector[A]
 }
 
-object Question {
-  def assignId(q: Question, newId: Int) = q match {
-    case x: OpenQuestion  => x.copy(id = newId)
-    case x: CloseQuestion => x.copy(id = newId)
-    case x: MultiQuestion => x.copy(id = newId)
-  }
-}
-
 case class OpenQuestion(
     override val id: Int,
     override val label: String,
@@ -118,30 +110,30 @@ object VoteState {
   val deleteVoting = (s: VoteState, id: Int, timeDate: LocalDateTime) =>
     Try {
       val v = s.votings(id)
-      Voting.assertNotFreezed(v, timeDate)
+      Voting.assertNotRunning(v, timeDate)
       s.copy(votings = s.votings - id)
   }
 
-  def votingLens(userId: String, id: Int): LensT[Try, VoteState, Voting] =
+  def votingLens(ownerCheckId: String, id: Int): LensT[Try, VoteState, Voting] =
     lensT(
       s => Try(s.votings(id)),
       (s, v) =>
         Try {
-          assert(v.owner.name == userId)
+          assert(v.owner.name == ownerCheckId)
           s.copy(votings = s.votings + (id -> v.copy(id = id)))
       }
     )
 }
 
 object Voting {
-  def isFreezed(v: Voting, timeDate: LocalDateTime): Boolean =
+  def isRunning(v: Voting, timeDate: LocalDateTime): Boolean =
     v.isManualStarted || v.startDate.exists(timeDate.isAfter)
 
   def isResultCanBeViewed(v: Voting, timeDate: LocalDateTime): Boolean =
     !v.isManualStarted || v.stopDate.exists(timeDate.isAfter)
 
-  def assertNotFreezed(v: Voting, timeDate: LocalDateTime): Unit =
-    assert(!isFreezed(v, timeDate))
+  def assertNotRunning(v: Voting, timeDate: LocalDateTime): Unit =
+    assert(!isRunning(v, timeDate))
 
   def assertResultCanBeViewed(v: Voting, timeDate: LocalDateTime): Unit =
     assert(isResultCanBeViewed(v, timeDate))
@@ -152,7 +144,7 @@ object Voting {
       Try {
         if (!o.isManualStarted && v) {
           // manual start
-          assertNotFreezed(o, timeDate)
+          assertNotRunning(o, timeDate)
           assert(o.startDate.isEmpty)
           o.copy(isManualStarted = v)
         } else if (o.isManualStarted && !v) {
@@ -168,20 +160,93 @@ object Voting {
       o => Try(o.questions.last),
       (o, v) =>
         Try {
-          assertNotFreezed(o, timeDate)
+          assertNotRunning(o, timeDate)
           o.copy(
             questions = o.questions :+ Question
               .assignId(v, o.questions.map(_.id).max + 1)) // assign new is as max from all + 1
       }
     )
 
-  def deleteQuestionLens(qId: Int, timeDate: LocalDateTime) =
+  def deleteQuestionLens(qIdx: Int, timeDate: LocalDateTime) =
     lens0[Try, Voting, Unit](
       o => (),
       (o, _) =>
         Try {
-          assertNotFreezed(o, timeDate)
-          o.copy(questions = o.questions.filterNot(_.id == qId))
+          assertNotRunning(o, timeDate)
+          o.copy(questions = o.questions.patch(qIdx, Nil, 1))
+      }
+    )
+
+  def questionLens(timeDate: LocalDateTime, qIdx: Int, isNeedRunning: Boolean) =
+    lensT[Try, Voting, Question](
+      o => Try(o.questions.last),
+      (o, v) =>
+        Try {
+          assert(isRunning(o, timeDate) == isNeedRunning)
+          o.copy(questions = o.questions.updated(qIdx, v))
+      }
+    )
+}
+
+object Question {
+  def assignId(q: Question, newId: Int) = q match {
+    case x: OpenQuestion  => x.copy(id = newId)
+    case x: CloseQuestion => x.copy(id = newId)
+    case x: MultiQuestion => x.copy(id = newId)
+  }
+
+  def acceptAnswer(
+      q: Question,
+      userId: Option[String],
+      timeDate: LocalDateTime,
+      ansStr: String,
+      toOpenAnswer: String => Try[String],
+      toCloseAnswer: String => Try[Int],
+      toMultiAnswer: String => Try[Set[Int]]
+  ): Try[Question] = {
+    q match {
+      case x: OpenQuestion =>
+        toOpenAnswer(ansStr).map { ans =>
+          x.copy(
+            answers = x.answers :+ OpenAnswer(userId.map(User), timeDate, ans))
+        }
+      case x: CloseQuestion =>
+        toCloseAnswer(ansStr).map { ans =>
+          val maxIdx = x.options.size
+          assert(ans < maxIdx)
+
+          x.copy(
+            answers = x.answers :+ CloseAnswer(userId.map(User), timeDate, ans))
+        }
+      case x: MultiQuestion =>
+        toMultiAnswer(ansStr).map { ans =>
+          val maxIdx = x.options.size
+          assert(ans.forall(_ < maxIdx))
+
+          x.copy(
+            answers = x.answers :+ MultiAnswer(userId.map(User), timeDate, ans))
+        }
+    }
+  }
+
+  def acceptAnswerLens(
+      userId: Option[String],
+      timeDate: LocalDateTime,
+      ansStr: String,
+      toOpenAnswer: String => Try[String],
+      toCloseAnswer: String => Try[Int],
+      toMultiAnswer: String => Try[Set[Int]]
+  ) =
+    lensT[Try, Question, Answer](
+      o => Try(o.answers.last),
+      (o, _) => {
+        acceptAnswer(o,
+                     userId,
+                     timeDate,
+                     ansStr,
+                     toOpenAnswer,
+                     toCloseAnswer,
+                     toMultiAnswer)
       }
     )
 }
