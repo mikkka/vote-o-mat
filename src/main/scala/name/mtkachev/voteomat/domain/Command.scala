@@ -51,5 +51,6 @@ case class Vote(
     toMultiAnswer: String => Try[Set[Int]]
 ) extends CommonCommand
 
+case class User(user: String) extends CtxCommand
 case class Begin(votingId: Int) extends CtxCommand
 case class End() extends CtxCommand

@@ -8,8 +8,6 @@ case class VoteState(
     votings: Map[Int, Voting]
 )
 
-case class User(name: String)
-
 case class Voting(
     id: Int,
     owner: User,
@@ -119,7 +117,7 @@ object VoteState {
       s => Try(s.votings(id)),
       (s, v) =>
         Try {
-          assert(v.owner.name == ownerCheckId)
+          assert(v.owner.user == ownerCheckId)
           s.copy(votings = s.votings + (id -> v.copy(id = id)))
       }
     )

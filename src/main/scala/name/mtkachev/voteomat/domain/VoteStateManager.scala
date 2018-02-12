@@ -17,6 +17,7 @@ case class View(voting: Voting) extends ApplyRes
 case class QuestionAdded(maxdx: Int) extends ApplyRes
 case class QuestionDeleted() extends ApplyRes
 case class Voted() extends ApplyRes
+case class CtxChanged() extends ApplyRes
 
 object VoteStateManager {
   import cats.syntax.either._
@@ -27,7 +28,7 @@ object VoteStateManager {
   def apply(state: VoteState,
             time: LocalDateTime,
             ctx: CommonCommandContext,
-            cmd: CommonCommand): Either[Throwable, (VoteState, ApplyRes)] = {
+            cmd: CommonCommand): Try[(VoteState, ApplyRes)] = {
 
     def addQuestion(q: Question) = {
       withChosenVotingId(ctx) { id =>
@@ -39,7 +40,7 @@ object VoteStateManager {
             votingLens.get(s).map { v =>
               (state, QuestionAdded(v.questions.size - 1))
           })
-      }.toEither
+      }
     }
 
     cmd match {
@@ -61,28 +62,24 @@ object VoteStateManager {
             )
           )
           .map((_, VotingCreated(id)))
-          .toEither
 
       case cmd: ListVotings =>
-        (state, VotingList(state.votings.values.toList)).asRight
+        Try(state, VotingList(state.votings.values.toList))
 
       case DeleteVoting(id) =>
         VoteState
           .deleteVoting(state, id, time)
           .map((_, VotingDeleted(id)))
-          .toEither
 
       case StartVoting(id) =>
         votingManualStartLens(ctx.userId, time, id)
           .set(state, true)
           .map((_, VotingStarted(id)))
-          .toEither
 
       case StopVoting(id) =>
         votingManualStartLens(ctx.userId, time, id)
           .set(state, true)
           .map((_, VotingStopped(id)))
-          .toEither
 
       case ViewVotingResult(id) =>
         VoteState
@@ -95,7 +92,6 @@ object VoteStateManager {
             }
           }
           .map((state, _))
-          .toEither
 
       case cmd: ViewVoting =>
         withChosenVotingId(ctx) { id =>
@@ -103,7 +99,7 @@ object VoteStateManager {
             .votingLens(ctx.userId, id)
             .get(state)
             .map(v => (state, View(v)))
-        }.toEither
+        }
 
       case cmd: AddOpenQuestion =>
         addQuestion(OpenQuestion(cmd.question))
@@ -119,14 +115,14 @@ object VoteStateManager {
           votingDeleteQuestionLens(ctx.userId, time, id, cmd.questionId)
             .set(state, ())
             .map(_ => (state, QuestionDeleted()))
-        }.toEither
+        }
 
       case cmd: Vote =>
         withChosenVotingId(ctx) { id =>
           VoteState.votingLens(ctx.userId, id).get(state).map { voting =>
             val userId = if (voting.isAnonymous) None else Some(ctx.userId)
             compose(
-              VoteState.votingLens(voting.owner.name, id),
+              VoteState.votingLens(voting.owner.user, id),
               compose(Voting.questionLens(time, cmd.questionId, true),
                       Question.acceptAnswerLens(userId,
                                                 time,
@@ -136,7 +132,7 @@ object VoteStateManager {
                                                 cmd.toMultiAnswer))
             )
           }
-        }.map(_ => (state, Voted())).toEither
+        }.map(_ => (state, Voted()))
     }
   }
 
