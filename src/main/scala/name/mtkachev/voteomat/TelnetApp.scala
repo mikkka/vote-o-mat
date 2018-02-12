@@ -84,7 +84,10 @@ object TelnetApp {
       val g = Flow.fromGraph(GraphDSL.create() { implicit b =>
         import GraphDSL.Implicits._
 
-        val commandParserFlow = Flow[String].map(x => commandParser.parse(x))
+        val commandParserFlow = Flow[String].map{x =>
+          if (sessionCtx.isEmpty) Success(User(x))
+          else commandParser.parse(x)
+        }
 
         val inFlow = Flow[ByteString]
           .via(
