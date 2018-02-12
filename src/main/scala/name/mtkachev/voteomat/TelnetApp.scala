@@ -4,7 +4,16 @@ import java.time.LocalDateTime
 
 import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, FlowShape}
-import akka.stream.scaladsl.{Broadcast, Flow, Framing, GraphDSL, Merge, Sink, Source, Tcp}
+import akka.stream.scaladsl.{
+  Broadcast,
+  Flow,
+  Framing,
+  GraphDSL,
+  Merge,
+  Sink,
+  Source,
+  Tcp
+}
 import akka.stream.scaladsl.Tcp.{IncomingConnection, ServerBinding}
 import akka.util.ByteString
 import name.mtkachev.voteomat.domain._
@@ -21,8 +30,8 @@ object TelnetApp {
       lock.synchronized {
         cmd match {
           case User(user) => ctx = Some(CommonCommandContext(user, None))
-          case Begin(id) => ctx = ctx.map(x => x.copy(votingId = Some(id)))
-          case End() => ctx = ctx.map(x => x.copy(votingId = None))
+          case Begin(id)  => ctx = ctx.map(x => x.copy(votingId = Some(id)))
+          case End()      => ctx = ctx.map(x => x.copy(votingId = None))
         }
         Success(CtxChanged())
       }
@@ -57,7 +66,7 @@ object TelnetApp {
     implicit val actorSystem = ActorSystem()
     implicit val materializer = ActorMaterializer()
 
-    val commandParser = new SimpleCommandParser{}
+    val commandParser = new SimpleCommandParser {}
     val stateCtx = new VoteStateCtx
     val resultsRenderer = new ResultsRendererImpl
 
@@ -68,7 +77,8 @@ object TelnetApp {
       val sessionCtx = new SessionCtx
 
       import connection._
-      val welcomeMsg = s"Welcome to: $localAddress, you is is: $remoteAddress! Predstavsya mraz: "
+      val welcomeMsg =
+        s"Welcome to: $localAddress, you is is: $remoteAddress! Predstavsya mraz: "
       val welcome = Source.single(welcomeMsg)
 
       val g = Flow.fromGraph(GraphDSL.create() { implicit b =>
@@ -79,8 +89,8 @@ object TelnetApp {
         val inFlow = Flow[ByteString]
           .via(
             Framing.delimiter(ByteString("\n\n"),
-              maximumFrameLength = 256,
-              allowTruncation = true))
+                              maximumFrameLength = 256,
+                              allowTruncation = true))
           .map(_.utf8String)
           .via(commandParserFlow)
 
@@ -88,7 +98,10 @@ object TelnetApp {
         val broadcast = b.add(Broadcast[Try[Command]](3))
         val merge = b.add(Merge[Try[ApplyRes]](3))
 
-        val toBytes = Flow[Try[ApplyRes]].map(resultsRenderer.render).merge(welcome).map(ByteString(_))
+        val toBytes = Flow[Try[ApplyRes]]
+          .map(resultsRenderer.render)
+          .merge(welcome)
+          .map(x => ByteString(x + "\n"))
         val out = b.add(toBytes)
 
         in.out ~> broadcast.in
@@ -96,18 +109,25 @@ object TelnetApp {
         //there go session ctx ctrl
         broadcast.out(0) ~>
           Flow[Try[Command]]
-            .collect{case Success(cmd: CtxCommand) => sessionCtx.applyCmd(cmd)} ~> merge
+            .collect {
+              case Success(cmd: CtxCommand) => sessionCtx.applyCmd(cmd)
+            } ~> merge
 
         //there go cmds
         broadcast.out(1) ~>
           Flow[Try[Command]]
-            .collect{ case Success(cmd: CommonCommand) =>
-              Try(sessionCtx.get).flatMap{ctx => stateCtx.applyCmd(ctx, cmd)}
+            .collect {
+              case Success(cmd: CommonCommand) =>
+                Try(sessionCtx.get).flatMap { ctx =>
+                  stateCtx.applyCmd(ctx, cmd)
+                }
             } ~> merge
 
         //there go parse errors
         broadcast.out(2) ~>
-          Flow[Try[Command]].collect{case x @ Failure(_) => x.asInstanceOf[Failure[ApplyRes]]} ~> merge
+          Flow[Try[Command]].collect {
+            case x @ Failure(_) => x.asInstanceOf[Failure[ApplyRes]]
+          } ~> merge
 
         merge ~> out.in
 
