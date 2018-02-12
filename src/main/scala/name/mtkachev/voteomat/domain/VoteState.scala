@@ -161,7 +161,9 @@ object Voting {
           assertNotRunning(o, timeDate)
           o.copy(
             questions = o.questions :+ Question
-              .assignId(v, o.questions.map(_.id).max + 1)) // assign new is as max from all + 1
+              .assignId(v,
+                if (o.questions.nonEmpty) o.questions.map(_.id).max + 1
+                else 0)) // assign new is as max from all + 1
       }
     )
 
@@ -177,7 +179,7 @@ object Voting {
 
   def questionLens(timeDate: LocalDateTime, qIdx: Int, isNeedRunning: Boolean) =
     lensT[Try, Voting, Question](
-      o => Try(o.questions.last),
+      o => Try(o.questions(qIdx)),
       (o, v) =>
         Try {
           assert(isRunning(o, timeDate) == isNeedRunning)

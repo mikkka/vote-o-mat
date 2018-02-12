@@ -38,7 +38,7 @@ object VoteStateManager {
           .set(state, q)
           .flatMap(s =>
             votingLens.get(s).map { v =>
-              (state, QuestionAdded(v.questions.size - 1))
+              (s, QuestionAdded(v.questions.size - 1))
           })
       }
     }
@@ -78,7 +78,7 @@ object VoteStateManager {
 
       case StopVoting(id) =>
         votingManualStartLens(ctx.userId, time, id)
-          .set(state, true)
+          .set(state, false)
           .map((_, VotingStopped(id)))
 
       case ViewVotingResult(id) =>
@@ -114,12 +114,12 @@ object VoteStateManager {
         withChosenVotingId(ctx) { id =>
           votingDeleteQuestionLens(ctx.userId, time, id, cmd.questionId)
             .set(state, ())
-            .map(_ => (state, QuestionDeleted()))
+            .map(s => (s, QuestionDeleted()))
         }
 
       case cmd: Vote =>
         withChosenVotingId(ctx) { id =>
-          VoteState.votingLens(ctx.userId, id).get(state).map { voting =>
+          VoteState.votingLens(ctx.userId, id).get(state).flatMap { voting =>
             val userId = if (voting.isAnonymous) None else Some(ctx.userId)
             compose(
               VoteState.votingLens(voting.owner.user, id),
@@ -130,9 +130,9 @@ object VoteStateManager {
                                                 cmd.toOpenAnswer,
                                                 cmd.toCloseAnswer,
                                                 cmd.toMultiAnswer))
-            )
+            ).set(state, null).map(s => (s, Voted()))
           }
-        }.map(_ => (state, Voted()))
+        }
     }
   }
 
