@@ -104,7 +104,7 @@ object TelnetApp {
         val toBytes = Flow[Try[ApplyRes]]
           .map(resultsRenderer.render)
           .merge(welcome)
-          .map(x => ByteString(x + "\n"))
+          .map(x => ByteString(x + "\n" + ("-" * 30) + "\n"))
         val out = b.add(toBytes)
 
         in.out ~> broadcast.in
