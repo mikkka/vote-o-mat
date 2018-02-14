@@ -3,21 +3,16 @@ package name.mtkachev.voteomat
 import java.time.LocalDateTime
 
 import cats.Show
-import name.mtkachev.voteomat.domain._
+import name.mtkachev.voteomat.domain.{OpenQuestion, _}
 
 import scala.util.{Failure, Success, Try}
 import cats.syntax.show._
-
-import scala.reflect.ClassTag
-import scala.reflect.api._
 
 trait ResultsRenderer {
   def render(res: Try[ApplyRes]): String
 }
 
 class ResultsRendererImpl extends ResultsRenderer {
-
-  import ElemsShow0._
 
   override def render(res: Try[ApplyRes]): String = res match {
     case Failure(t) => s"ERROR: ${t.getMessage}"
@@ -26,6 +21,7 @@ class ResultsRendererImpl extends ResultsRenderer {
         s"опрос создан: $id"
 
       case VotingList(votings: List[Voting]) =>
+        import Show0._
         votings.map(_.show).mkString("\n")
 
       case VotingDeleted(id: Int) =>
@@ -38,12 +34,13 @@ class ResultsRendererImpl extends ResultsRenderer {
         s"опрос окончен: $id"
 
       case View(voting: Voting) =>
+        import Show0._
         voting.show + "\n" +
           voting.questions.map (_.show)
           .mkString("\n")
 
       case VotingResult(voting: Voting) =>
-        import ElemShow1._
+        import Show1._
 
         voting.show + "\n" +
           voting.questions.map (_.show)
@@ -64,19 +61,24 @@ class ResultsRendererImpl extends ResultsRenderer {
   }
 }
 
-trait ElemsShow0 {
+trait VotingShow {
   implicit def dateShow: Show[LocalDateTime] = Show.show(x => x.toString)
 
   implicit def votingShow: Show[Voting] = Show.show { v =>
     s"""#${v.id} ${v.name} ${if (v.isManualStarted) "[активен]" else ""} ${v.startDate.map(_.show).getOrElse("")} ${v.stopDate.map(_.show).getOrElse("")} ${if (v.isAnonymous) "[анонимный]" else ""} ${if (v.resultsAfterStop) "[результаты после]" else ""}"""
   }
 
-  implicit def questionShow: Show[Question] = Show.show {
-    case x: OpenQuestion => x.show
-    case x: CloseQuestion => x.show
-    case x: MultiQuestion => x.show
+  implicit def questionShow(implicit evO: Show[OpenQuestion], evC: Show[CloseQuestion], evM: Show[MultiQuestion]): Show[Question] = Show.show {
+    case x: OpenQuestion =>
+      x.show
+    case x: CloseQuestion =>
+      x.show
+    case x: MultiQuestion =>
+      x.show
   }
+}
 
+trait QuestionsShow0 {
   implicit def openQuestionShow: Show[OpenQuestion] = Show.show { q =>
     s"[#${q.id}] ${q.label}"
   }
@@ -92,9 +94,9 @@ trait ElemsShow0 {
   }
 }
 
-object ElemsShow0 extends ElemsShow0
+object Show0 extends VotingShow with QuestionsShow0
 
-trait ElemsShow1 extends ElemsShow0 {
+trait QuestionsShow1 {
   implicit def openAnswerShow: Show[OpenAnswer] = Show.show { a =>
     a.author.map(au => s"${au.user} : ").getOrElse("") + a.value
   }
@@ -120,4 +122,4 @@ trait ElemsShow1 extends ElemsShow0 {
   }
 }
 
-object ElemShow1 extends ElemsShow1
+object Show1 extends VotingShow with QuestionsShow1
