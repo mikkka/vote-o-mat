@@ -2,18 +2,10 @@ package name.mtkachev.voteomat
 
 import java.time.LocalDateTime
 
+import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, FlowShape}
-import akka.stream.scaladsl.{
-  Broadcast,
-  Flow,
-  Framing,
-  GraphDSL,
-  Merge,
-  Sink,
-  Source,
-  Tcp
-}
+import akka.stream.scaladsl.{Broadcast, Flow, Framing, GraphDSL, Merge, Sink, Source, Tcp}
 import akka.stream.scaladsl.Tcp.{IncomingConnection, ServerBinding}
 import akka.util.ByteString
 import name.mtkachev.voteomat.domain._
@@ -42,7 +34,7 @@ object TelnetApp {
         s"Welcome to: $localAddress, you is is: $remoteAddress! Predstavsya mraz: "
       val welcome = Source.single(welcomeMsg)
 
-      val g = Flow.fromGraph(GraphDSL.create() { implicit b =>
+      val g: Flow[String, String, NotUsed] = Flow.fromGraph(GraphDSL.create() { implicit b =>
         import GraphDSL.Implicits._
 
         val commandParserFlow = Flow[String].map{x =>
@@ -50,23 +42,15 @@ object TelnetApp {
           else commandParser.parse(x)
         }
 
-        val inFlow = Flow[ByteString]
-          .via(
-            Framing.delimiter(ByteString("\n\n"),
-                              maximumFrameLength = 256,
-                              allowTruncation = true))
-          .map(_.utf8String)
-          .via(commandParserFlow)
-
-        val in = b.add(inFlow)
+        val in = b.add(commandParserFlow)
         val broadcast = b.add(Broadcast[Try[Command]](3))
         val merge = b.add(Merge[Try[ApplyRes]](3))
 
-        val toBytes = Flow[Try[ApplyRes]]
+        val toString = Flow[Try[ApplyRes]]
           .map(resultsRenderer.render)
           .merge(welcome)
-          .map(x => ByteString(x + "\n" + ("-" * 30) + "\n"))
-        val out = b.add(toBytes)
+
+        val out = b.add(toString)
 
         in.out ~> broadcast.in
 
@@ -98,7 +82,16 @@ object TelnetApp {
         FlowShape(in.in, out.out)
       })
 
-      connection.handleWith(g)
+      val logic = Flow[ByteString]
+        .via(
+          Framing.delimiter(ByteString("\n\n"),
+            maximumFrameLength = 256,
+            allowTruncation = true))
+        .map(_.utf8String)
+        .via(g).map(x => ByteString(x + "\n" + ("-" * 30) + "\n"))
+
+
+      connection.handleWith(logic)
     }
   }
 }
