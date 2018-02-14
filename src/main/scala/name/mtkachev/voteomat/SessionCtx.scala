@@ -4,14 +4,23 @@ import name.mtkachev.voteomat.domain._
 
 import scala.util.{Success, Try}
 
-class SessionCtx {
+trait SessionCtx {
+  def applyCmd(cmd: CtxCommand): Try[ApplyRes]
+  def isEmpty: Boolean
+  def get: CommonCommandContext
+}
+
+class SessionSingleCtx extends SessionCtx {
   private val lock = new Object
   private var ctx = Option.empty[CommonCommandContext]
 
   def applyCmd(cmd: CtxCommand): Try[ApplyRes] = {
     lock.synchronized {
       cmd match {
-        case User(user) => ctx = Some(CommonCommandContext(user, None))
+        case User(user) =>
+          if (ctx.isEmpty) {
+            ctx = Some(CommonCommandContext(user, None))
+          }
         case Begin(id)  => ctx = ctx.map(x => x.copy(votingId = Some(id)))
         case End()      => ctx = ctx.map(x => x.copy(votingId = None))
       }

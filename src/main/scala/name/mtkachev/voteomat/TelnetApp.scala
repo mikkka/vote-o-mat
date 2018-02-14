@@ -25,7 +25,7 @@ object TelnetApp {
       Tcp().bind("127.0.0.1", 8888)
 
     connections.runForeach { connection =>
-      val sessionCtx = new SessionCtx
+      val sessionCtx = new SessionSingleCtx
 
       import connection._
       val welcomeMsg =
