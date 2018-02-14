@@ -13,6 +13,7 @@ trait ResultsRenderer {
 }
 
 class ResultsRendererImpl extends ResultsRenderer {
+  import Show0._
 
   override def render(res: Try[ApplyRes]): String = res match {
     case Failure(t) => s"ERROR: ${t.getMessage}"
@@ -21,7 +22,6 @@ class ResultsRendererImpl extends ResultsRenderer {
         s"опрос создан: $id"
 
       case VotingList(votings: List[Voting]) =>
-        import Show0._
         votings.map(_.show).mkString("\n")
 
       case VotingDeleted(id: Int) =>
@@ -34,7 +34,6 @@ class ResultsRendererImpl extends ResultsRenderer {
         s"опрос окончен: $id"
 
       case View(voting: Voting) =>
-        import Show0._
         voting.show + "\n" +
           voting.questions.map (_.show)
           .mkString("\n")
@@ -96,7 +95,7 @@ trait QuestionsShow0 {
 
 object Show0 extends VotingShow with QuestionsShow0
 
-trait QuestionsShow1 {
+trait QuestionsShow1 extends QuestionsShow0 {
   implicit def openAnswerShow: Show[OpenAnswer] = Show.show { a =>
     a.author.map(au => s"${au.user} : ").getOrElse("") + a.value
   }
