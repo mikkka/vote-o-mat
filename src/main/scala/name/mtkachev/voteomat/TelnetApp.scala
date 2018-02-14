@@ -22,45 +22,6 @@ import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
 object TelnetApp {
-  class SessionCtx {
-    private val lock = new Object
-    private var ctx = Option.empty[CommonCommandContext]
-
-    def applyCmd(cmd: CtxCommand): Try[ApplyRes] = {
-      lock.synchronized {
-        cmd match {
-          case User(user) => ctx = Some(CommonCommandContext(user, None))
-          case Begin(id)  => ctx = ctx.map(x => x.copy(votingId = Some(id)))
-          case End()      => ctx = ctx.map(x => x.copy(votingId = None))
-        }
-        Success(CtxChanged())
-      }
-    }
-
-    def isEmpty: Boolean = lock.synchronized {
-      ctx.isEmpty
-    }
-
-    def get: CommonCommandContext = lock.synchronized {
-      ctx.get
-    }
-  }
-
-  class VoteStateCtx {
-    private val lock = new Object
-    private var state = new VoteState(Map.empty)
-
-    def applyCmd(ctx: CommonCommandContext,
-                 cmd: CommonCommand): Try[ApplyRes] = {
-      val time = LocalDateTime.now()
-      lock.synchronized {
-        val res = VoteStateManager.apply(state, time, ctx, cmd)
-        res.foreach(x => state = x._1)
-        res.map(_._2)
-      }
-    }
-  }
-
   def main(args: Array[String]): Unit = {
     println("hello!")
     implicit val actorSystem = ActorSystem()
