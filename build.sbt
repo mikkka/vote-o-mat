@@ -3,10 +3,10 @@ val catsAll = Seq(
   "org.typelevel" %% "cats-core" % catsVersion,
   "org.typelevel" %% "cats-macros" % catsVersion,
   "org.typelevel" %% "cats-kernel" % catsVersion,
-  "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.0",
-  "com.typesafe.akka" %% "akka-stream" % "2.5.9",
+  "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4",
+  "com.typesafe.akka" %% "akka-stream" % "2.4.19",
   "info.mukel" %% "telegrambot4s" % "3.0.14",
-  "com.typesafe.akka" %% "akka-stream-testkit" % "2.5.9" % Test,
+  "com.typesafe.akka" %% "akka-stream-testkit" % "2.4.19" % Test,
   "org.scalatest" %% "scalatest" % "3.0.4" % "test"
 )
 

@@ -109,14 +109,14 @@ trait QuestionsShow1 extends QuestionsShow0 {
   implicit def closeQuestionShowWithAnswers: Show[CloseQuestion] = Show.show { q =>
     val ansMap = q.answers.map(_.value).groupBy(identity).map(kv => kv._1 -> kv._2.size)
 
-    s"[#${q.id}] ${q.label} [close]: " +
+    s"[#${q.id}] ${q.label} [close]: \n" +
       q.options.zipWithIndex.map { case (o, idx) => s"#$idx $o : ${ansMap.getOrElse(idx, 0)}" }.mkString("\n")
   }
 
   implicit def multiQuestionShowWithAnswers: Show[MultiQuestion] = Show.show { q =>
     val ansMap = q.answers.flatMap(_.value).groupBy(identity).map(kv => kv._1 -> kv._2.size)
 
-    s"[#${q.id}] ${q.label} [multi]: " +
+    s"[#${q.id}] ${q.label} [multi]: \n" +
       q.options.zipWithIndex.map { case (o, idx) => s"#$idx $o : ${ansMap.getOrElse(idx, 0)}" }.mkString("\n")
   }
 }
